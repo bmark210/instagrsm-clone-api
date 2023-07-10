@@ -31,18 +31,14 @@ const UserSchema = new mongoose.Schema(
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
+        default: [],
       },
     ],
     following: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
-      },
-    ],
-    suggestionsList: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        default: [],
       },
     ],
   },

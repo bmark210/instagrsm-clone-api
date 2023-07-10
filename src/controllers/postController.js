@@ -1,13 +1,18 @@
-import mongoose from "mongoose";
 import PostModel from "../models/Post.js";
+import UserModel from "../models/User.js";
 
 export const getAll = async (req, res) => {
+  const id = req.userId;
+  const user = await UserModel.findById(id);
+  const usersYoufollow = user.following.map((id) => id.toString());
+  console.log("usersYoufollow", usersYoufollow);
+
   try {
-    const posts = await PostModel.find()
+    const posts = await PostModel.find({ user: { $in: usersYoufollow } })
       .populate("user", "_id username avatar")
-      // .select("imageUrl text place comments createdAt likes")
       .sort({ createdAt: -1 })
       .exec();
+    console.log("posts", posts);
 
     res.json(posts);
   } catch (error) {
@@ -53,39 +58,28 @@ export const getOne = async (req, res) => {
   }
 };
 
-export const explore = async (req, res) => {
+export const getPopular = async (req, res) => {
   try {
     const posts = await PostModel.aggregate([
       {
         $project: {
-          imageUrl: 1,
-          text: 1,
-          place: 1,
-          comments: 1,
-          tags: 1,
-          user: 1,
-          likes: 1,
+          _id: 1,
+          image: 1,
           likesLength: {
             $size: "$likes",
           },
         },
       },
-      {
-        $match: {
-          likesLength: { $gt: 2 },
-        },
-      },
-      // {
-      //   $sort: { likesCount: -1 },
-      // },
+      { $match: { likesLength: { $gt: 2 } } }, // get only posts where likes length greater than 2
+      { $sort: { likesLength: -1 } },
     ]).exec();
+    console.log("posts", posts);
     res.json(posts);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
-//
 
 export const getAllCreatedByUser = async (req, res) => {
   const { userId } = req.params;
@@ -109,20 +103,20 @@ export const setPostLiked = async (req, res) => {
 
     const isLiked = await PostModel.findOne({
       _id: postId,
-      "likes._id": userId,
+      likes: userId,
     });
 
     if (isLiked) {
       const updatedPost = await PostModel.findByIdAndUpdate(
         postId,
-        { $pull: { likes: { _id: userId } } },
+        { $pull: { likes: userId } },
         { new: true }
       );
       res.json(updatedPost);
     } else {
       const updatedPost = await PostModel.findByIdAndUpdate(
         postId,
-        { $addToSet: { likes: { _id: userId } } },
+        { $addToSet: { likes: userId } },
         { new: true }
       );
       res.json(updatedPost);
