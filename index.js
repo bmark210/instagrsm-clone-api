@@ -1,6 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
+import dotenv from "dotenv/config";
 import { loginValidation, registerValidation } from "./src/validation.js";
 import handleValidationErrors from "./src/utils/handleValidationErrors.js";
 import {
@@ -12,7 +13,7 @@ import checkAuth from "./src/utils/getAuth.js";
 import multer from "multer";
 
 const app = express();
-const port = 4444;
+const port = process.env.PORT || 3000;
 
 mongoose
   .connect(
@@ -26,7 +27,6 @@ mongoose
   });
 
 app.use(cors());
-
 app.use(express.json());
 
 // user req
@@ -46,7 +46,19 @@ app.post(
 
 app.get("/auth/me", checkAuth, userController.getMe);
 
-app.get("/users/:username", checkAuth, userController.getOneByUsername);
+app.get("/users/suggestions", checkAuth, userController.addSuggestions);
+
+app.get("/users/allsuggestions", checkAuth, userController.addAllSuggestions);
+
+app.get("/users/id/:id", checkAuth, userController.getOneByUserId);
+
+app.get(
+  "/users/username/:username",
+  checkAuth,
+  userController.getOneByUsername
+);
+
+app.get("/users/stories", checkAuth, userController.getStories);
 
 app.patch("/users/caption", checkAuth, userController.updateCaption);
 
@@ -55,8 +67,6 @@ app.patch("/users/avatar", checkAuth, userController.updateAvatar);
 app.patch("/users/followers", checkAuth, userController.updateFollowers);
 
 app.patch("/users/followings", checkAuth, userController.updateFollowings);
-
-app.get("/users/suggestions", checkAuth, userController.getSuggestions);
 
 // image req
 
@@ -85,12 +95,14 @@ app.post("/image/remove/:id", checkAuth, imageController.removeImage);
 app.post("/posts/create", checkAuth, postController.create);
 
 app.get("/posts", checkAuth, postController.getAll);
-app.get("/posts/explore", checkAuth, postController.explore);
+app.get("/posts/popular", checkAuth, postController.getPopular);
 app.get("/posts/:id", checkAuth, postController.getOne);
 app.patch("/posts", checkAuth, postController.setPostLiked);
 app.get("/posts/p/:userId", checkAuth, postController.getAllCreatedByUser);
+console.log("hi there");
 
 app.listen(port, (err) => {
+  console.log("hi there");
   if (err) {
     return console.log(err);
   }

@@ -2,26 +2,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { validationResult } from "express-validator";
 import UserModel from "../models/User.js";
-
-export const getSuggestions = async (req, res) => {
-  console.log("req.body", req.body);
-
-  try {
-    const user = await UserModel.findById(req.userId);
-    if (!user) {
-      return res.status(404).json({
-        message: "Пользователь не найден",
-      });
-    }
-    res.json(user);
-  } catch (error) {
-    console.error(error); // Log the error for debugging purposes
-    res.status(500).json({
-      message: "Не удалось найти пользователя",
-      error: error.message,
-    });
-  }
-};
+import mongoose from "mongoose";
 
 export const login = async (req, res) => {
   try {
@@ -121,8 +102,6 @@ export const getMe = async (req, res) => {
 export const updateAvatar = async (req, res) => {
   const userId = req.userId;
   const avatarData = req.body.avatar;
-  console.log("userId", userId);
-  console.log("avatar", avatarData);
 
   try {
     if (avatarData) {
@@ -145,7 +124,6 @@ export const updateAvatar = async (req, res) => {
 };
 
 export const getOneByUsername = async (req, res) => {
-  console.log("req.userId", req.userId);
   try {
     const user = await UserModel.findOne({ username: req.params.username });
     res.json(user);
@@ -159,7 +137,10 @@ export const getOneByUsername = async (req, res) => {
 
 export const getOneByUserId = async (req, res) => {
   try {
-    const user = await UserModel.findById(req.params.id);
+    const user = await UserModel.findById(req.params.id)
+      .select("_id username avatar")
+      .exec();
+
     res.json(user);
   } catch (error) {
     console.log(error);
@@ -225,27 +206,25 @@ export const updateFollowers = async (req, res) => {
   }
 };
 
-// const userId = req.userId;
-//   const userIdToUpdateFollowers = req.body.userIdToUpdateFollowers;
-//   console.log('userIdToUpdateFollowers', userIdToUpdateFollowers);
-//   console.log('userId', userId);
-
-//   try {
-//     const updatedUser = await UserModel.findByIdAndUpdate(
-//       userIdToUpdateFollowers,
-//       { followers: userId },
-//       { new: true }
-//     );
-//     res.json({
-//       message: "success",
-//       user: updatedUser,
-//     });
-//   } catch (error) {
-//     console.log(error);
-//     res.json({
-//       message: "Failed to update followers",
-//     });
-//   }
+export const getStories = async (req, res) => {
+  try {
+    const usersWithStorys = await UserModel.aggregate([
+      {
+        $project: {
+          _id: 1,
+          username: 1,
+          avatar: 1,
+        },
+      },
+    ]).limit(8);
+    res.json(usersWithStorys);
+  } catch (error) {
+    console.log(error); 
+    res.json({
+      message: "Failed to get stories",
+    });
+  }
+};
 
 export const updateFollowings = async (req, res) => {
   const userId = req.userId;
@@ -284,36 +263,70 @@ export const updateFollowings = async (req, res) => {
 
 export const addSuggestions = async (req, res) => {
   const userId = req.userId;
-  console.log("userId", userId);
-
+  const user = await UserModel.findById(userId);
   try {
-    const usersWithMostFollowers = await UserModel.aggregate([
-      { $project: { _id: 1, followersCount: { $size: "$followers" } } },
-      { $sort: { followersCount: -1 } },
-    ]);
+    let suggestions = [];
 
-    const userIdWithMostFollowers = usersWithMostFollowers[0]._id;
-    console.log("userIdWithMostFollowers", userIdWithMostFollowers);
+    if (user.following.length === 0) {
+      // If user is not following anyone, get users with the most followers
+      const usersWithMostFollowers = await UserModel.aggregate([
+        { $project: { _id: 1, followersCount: { $size: "$followers" } } },
+        { $sort: { followersCount: -1 } },
+        { $limit: 5 },
+      ]).exec();
 
-    const updatedUser = await UserModel.findByIdAndUpdate(
-      userId,
-      { $addToSet: { suggestionsList: userIdWithMostFollowers } },
-      { new: true }
-    );
+      suggestions = usersWithMostFollowers.filter(
+        (user) => user._id.toString() !== req.userId
+      );
+    } else {
+      const followingIds = user.following.map((id) => id.toString());
 
-    if (!updatedUser) {
-      throw new Error("Failed to update user");
+      const usersYouDontFollowBack = await UserModel.find({
+        _id: { $nin: [userId, ...followingIds] },
+      })
+        .limit(5 - suggestions.length) // Limit to remaining slots in suggestions
+        .select("_id")
+        .exec();
+
+      suggestions = suggestions.concat(usersYouDontFollowBack);
     }
-
-    res.json({
-      message: "Success",
-      user: updatedUser,
-    });
+    res.json(suggestions);
   } catch (error) {
-    console.log(error);
-    res.status(500).json({
-      message: "Failed to add suggestions",
-      error: error.message,
-    });
+    console.error("An error occurred:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const addAllSuggestions = async (req, res) => {
+  const userId = req.userId;
+  const user = await UserModel.findById(userId);
+  try {
+    let suggestions = [];
+
+    if (user.following.length === 0) {
+      // If user is not following anyone, get users with the most followers
+      const usersWithMostFollowers = await UserModel.aggregate([
+        { $project: { _id: 1, followersCount: { $size: "$followers" } } },
+        { $sort: { followersCount: -1 } },
+      ]).exec();
+
+      suggestions = usersWithMostFollowers.filter(
+        (user) => user._id.toString() !== req.userId
+      );
+    } else {
+      const followingIds = user.following.map((id) => id.toString());
+
+      const usersYouDontFollowBack = await UserModel.find({
+        _id: { $nin: [userId, ...followingIds] },
+      })
+        .select("_id")
+        .exec();
+
+      suggestions = suggestions.concat(usersYouDontFollowBack);
+    }
+    res.json(suggestions);
+  } catch (error) {
+    console.error("An error occurred:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
