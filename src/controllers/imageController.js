@@ -28,6 +28,8 @@ export const uploadImage = async (req, res) => {
 };
 
 export const removeImage = async (req, res) => {
+  console.log("req.params", req.params.id);
+
   try {
     const { id } = req.params;
     console.log(id);

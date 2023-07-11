@@ -8,7 +8,9 @@ export const getAll = async (req, res) => {
   console.log("usersYoufollow", usersYoufollow);
 
   try {
-    const posts = await PostModel.find({ user: { $in: usersYoufollow } })
+    const posts = await PostModel.find({
+      user: { $in: [...usersYoufollow, id] },
+    })
       .populate("user", "_id username avatar")
       .sort({ createdAt: -1 })
       .exec();
