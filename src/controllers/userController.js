@@ -219,7 +219,7 @@ export const getStories = async (req, res) => {
     ]).limit(8);
     res.json(usersWithStorys);
   } catch (error) {
-    console.log(error); 
+    console.log(error);
     res.json({
       message: "Failed to get stories",
     });
@@ -330,3 +330,36 @@ export const addAllSuggestions = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+export async function getUsersByQuery(req, res) {
+  const { query } = req.query; // Extract the 'query' property from req.query
+  try {
+    const users = await UserModel.find({
+      $or: [
+        { email: { $regex: query, $options: "i" } },
+        { fullName: { $regex: query, $options: "i" } },
+        { username: { $regex: query, $options: "i" } },
+      ],
+    });
+    const aggregatedUsers = await UserModel.aggregate([
+      {
+        $match: {
+          _id: { $in: users.map((user) => user._id) },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          fullName: 1,
+          username: 1,
+          avatar: 1,
+        },
+      },
+    ]);
+
+    res.json(aggregatedUsers);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server error" });
+  }
+}

@@ -10,6 +10,11 @@ const UserSchema = new mongoose.Schema(
       type: Object,
       default: {},
     },
+    postsLength: {
+      required: true,
+      type: Number,
+      default: 0,
+    },
     fullName: {
       type: String,
       required: true,
