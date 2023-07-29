@@ -9,7 +9,7 @@ export const login = async (req, res) => {
     const user = await UserModel.findOne({ email: req.body.email });
     if (!user) {
       return res.status(404).json({
-        message: "User is not found",
+        msg: "User is not found",
       });
     }
 
@@ -19,7 +19,7 @@ export const login = async (req, res) => {
     );
     if (!isValidPass) {
       return res.status(400).json({
-        message: "Wrong email, username or password",
+        msg: "Wrong email, username or password",
       });
     }
 
@@ -40,7 +40,7 @@ export const login = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "Authorization failed" });
+    res.status(500).json({ msg: "Authorization failed" });
   }
 };
 
@@ -75,7 +75,7 @@ export const register = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "Registration failed" });
+    res.status(500).json({ msg: "Registration failed" });
   }
 };
 export const getMe = async (req, res) => {
@@ -84,7 +84,7 @@ export const getMe = async (req, res) => {
 
     if (!user) {
       return res.status(404).json({
-        message: "User is not found",
+        msg: "User is not found",
       });
     }
     const { passwordHash, ...userData } = user._doc;
@@ -94,7 +94,7 @@ export const getMe = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.json({
-      message: "Нет доступа",
+      msg: "Нет доступа",
     });
   }
 };
@@ -111,14 +111,14 @@ export const updateAvatar = async (req, res) => {
         { new: true }
       );
       res.json({
-        message: "success",
+        msg: "success",
         user: updatedUser,
       });
     }
   } catch (error) {
     console.log(error);
     res.json({
-      message: "Failed to update avatar URL",
+      msg: "Failed to update avatar URL",
     });
   }
 };
@@ -130,7 +130,7 @@ export const getOneByUsername = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.json({
-      message: "User is not found",
+      msg: "User is not found",
     });
   }
 };
@@ -145,7 +145,7 @@ export const getOneByUserId = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.json({
-      message: "User is not found",
+      msg: "User is not found",
     });
   }
 };
@@ -160,13 +160,13 @@ export const updateCaption = async (req, res) => {
       { new: true }
     );
     res.json({
-      message: "success",
+      msg: "success",
       user: updatedUser,
     });
   } catch (error) {
     console.log(error);
     res.json({
-      message: "Failed to update caption",
+      msg: "Failed to update caption",
     });
   }
 };
@@ -184,7 +184,7 @@ export const updateFollowers = async (req, res) => {
         { new: true }
       );
       res.json({
-        message: "success",
+        msg: "success",
         user: updatedUser,
       });
     } else {
@@ -194,14 +194,14 @@ export const updateFollowers = async (req, res) => {
         { new: true }
       );
       res.json({
-        message: "success",
+        msg: "success",
         user: updatedUser,
       });
     }
   } catch (error) {
     console.log(error);
     res.json({
-      message: "Failed to update followers",
+      msg: "Failed to update followers",
     });
   }
 };
@@ -221,7 +221,7 @@ export const getStories = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.json({
-      message: "Failed to get stories",
+      msg: "Failed to get stories",
     });
   }
 };
@@ -239,7 +239,7 @@ export const updateFollowings = async (req, res) => {
         { new: true }
       );
       res.json({
-        message: "success",
+        msg: "success",
         user: updatedUser,
       });
     } else {
@@ -249,14 +249,14 @@ export const updateFollowings = async (req, res) => {
         { new: true }
       );
       res.json({
-        message: "success",
+        msg: "success",
         user: updatedUser,
       });
     }
   } catch (error) {
     console.log(error);
     res.json({
-      message: "Failed to update followers",
+      msg: "Failed to update followers",
     });
   }
 };
