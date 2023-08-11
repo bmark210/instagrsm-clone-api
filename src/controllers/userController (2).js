@@ -9,7 +9,7 @@ export const login = async (req, res) => {
     const user = await UserModel.findOne({ email: req.body.email });
     if (!user) {
       return res.status(404).json({
-        msg: "User is not found",
+        message: "Пользователь не найден",
       });
     }
 
@@ -19,7 +19,7 @@ export const login = async (req, res) => {
     );
     if (!isValidPass) {
       return res.status(400).json({
-        msg: "Wrong email, username or password",
+        message: "Неверный логин или пароль",
       });
     }
 
@@ -40,7 +40,7 @@ export const login = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ msg: "Authorization failed" });
+    res.status(500).json({ message: "Не удалось авторизоваться" });
   }
 };
 
@@ -75,17 +75,16 @@ export const register = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ msg: "Registration failed" });
+    res.status(500).json({ message: "Регистрация не удалась" });
   }
 };
-
 export const getMe = async (req, res) => {
   try {
     const user = await UserModel.findById(req.userId);
 
     if (!user) {
       return res.status(404).json({
-        msg: "User is not found",
+        message: "Пользователь не найден",
       });
     }
     const { passwordHash, ...userData } = user._doc;
@@ -95,7 +94,7 @@ export const getMe = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.json({
-      msg: "Нет доступа",
+      message: "Нет доступа",
     });
   }
 };
@@ -105,19 +104,21 @@ export const updateAvatar = async (req, res) => {
   const avatarData = req.body.avatar;
 
   try {
-    const updatedUser = await UserModel.findByIdAndUpdate(
-      userId,
-      { avatar: avatarData ? avatarData : null },
-      { new: true }
-    );
-    res.json({
-      msg: "success",
-      user: updatedUser,
-    });
+    if (avatarData) {
+      const updatedUser = await UserModel.findByIdAndUpdate(
+        userId,
+        { avatar: avatarData ? avatarData : null },
+        { new: true }
+      );
+      res.json({
+        message: "success",
+        user: updatedUser,
+      });
+    }
   } catch (error) {
     console.log(error);
     res.json({
-      msg: "Failed to update avatar URL",
+      message: "Failed to update avatar URL",
     });
   }
 };
@@ -129,7 +130,7 @@ export const getOneByUsername = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.json({
-      msg: "User is not found",
+      message: "Не удалось найти пользователя",
     });
   }
 };
@@ -144,7 +145,7 @@ export const getOneByUserId = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.json({
-      msg: "User is not found",
+      message: "Не удалось найти пользователя",
     });
   }
 };
@@ -159,13 +160,13 @@ export const updateCaption = async (req, res) => {
       { new: true }
     );
     res.json({
-      msg: "success",
+      message: "success",
       user: updatedUser,
     });
   } catch (error) {
     console.log(error);
     res.json({
-      msg: "Failed to update caption",
+      message: "Failed to update caption",
     });
   }
 };
@@ -183,7 +184,7 @@ export const updateFollowers = async (req, res) => {
         { new: true }
       );
       res.json({
-        msg: "success",
+        message: "success",
         user: updatedUser,
       });
     } else {
@@ -193,14 +194,14 @@ export const updateFollowers = async (req, res) => {
         { new: true }
       );
       res.json({
-        msg: "success",
+        message: "success",
         user: updatedUser,
       });
     }
   } catch (error) {
     console.log(error);
     res.json({
-      msg: "Failed to update followers",
+      message: "Failed to update followers",
     });
   }
 };
@@ -218,9 +219,9 @@ export const getStories = async (req, res) => {
     ]).limit(8);
     res.json(usersWithStorys);
   } catch (error) {
-    console.log(error);
+    console.log(error); 
     res.json({
-      msg: "Failed to get stories",
+      message: "Failed to get stories",
     });
   }
 };
@@ -238,7 +239,7 @@ export const updateFollowings = async (req, res) => {
         { new: true }
       );
       res.json({
-        msg: "success",
+        message: "success",
         user: updatedUser,
       });
     } else {
@@ -248,14 +249,14 @@ export const updateFollowings = async (req, res) => {
         { new: true }
       );
       res.json({
-        msg: "success",
+        message: "success",
         user: updatedUser,
       });
     }
   } catch (error) {
     console.log(error);
     res.json({
-      msg: "Failed to update followers",
+      message: "Failed to update followers",
     });
   }
 };
@@ -329,36 +330,3 @@ export const addAllSuggestions = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
-
-export async function getUsersByQuery(req, res) {
-  const { query } = req.query;
-  try {
-    const users = await UserModel.find({
-      $or: [
-        { email: { $regex: query, $options: "i" } },
-        { fullName: { $regex: query, $options: "i" } },
-        { username: { $regex: query, $options: "i" } },
-      ],
-    });
-    const aggregatedUsers = await UserModel.aggregate([
-      {
-        $match: {
-          _id: { $in: users.map((user) => user._id) },
-        },
-      },
-      {
-        $project: {
-          _id: 1,
-          fullName: 1,
-          username: 1,
-          avatar: 1,
-        },
-      },
-    ]);
-
-    res.json(aggregatedUsers);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Server error" });
-  }
-}
