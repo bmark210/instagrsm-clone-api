@@ -102,7 +102,9 @@ export const getMe = async (req, res) => {
 
 export const updateAvatar = async (req, res) => {
   const userId = req.userId;
-  const avatarData = req.body.avatar;
+  const avatarData = req.body;
+  console.log('avatarData', avatarData);
+  
 
   try {
     const updatedUser = await UserModel.findByIdAndUpdate(
