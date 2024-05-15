@@ -5,18 +5,57 @@ export const getAll = async (req, res) => {
   const id = req.userId;
   const user = await UserModel.findById(id);
   const usersYoufollow = user.following.map((id) => id.toString());
-  console.log("usersYoufollow", usersYoufollow);
 
+  // Get all posts of users you follow and yours posts without comments, but if user commented
+  // the post while created it will be getting in field "firstComment"
   try {
     const posts = await PostModel.find({
       user: { $in: [...usersYoufollow, id] },
     })
       .populate("user", "_id username avatar")
-      .sort({ createdAt: -1 })
       .exec();
-    console.log("posts", posts);
 
-    res.json(posts);
+    const aggregatedPosts = await PostModel.aggregate([
+      {
+        $match: {
+          _id: { $in: posts.map((post) => post._id) },
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "user",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      {
+        $unwind: "$user",
+      },
+      {
+        $project: {
+          _id: 1,
+          image: 1,
+          caption: 1,
+          place: 1,
+          createdAt: 1,
+          commentsLength: { $size: "$comments" },
+          likes: 1,
+          user: {
+            _id: "$user._id",
+            username: "$user.username",
+            avatar: "$user.avatar",
+          },
+        },
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+    ]);
+
+    res.json(aggregatedPosts);
   } catch (error) {
     console.log(error);
     res.status(500).json({
@@ -29,11 +68,16 @@ export const create = async (req, res) => {
   try {
     const doc = new PostModel({
       image: req.body.image,
-      text: req.body.text,
       place: req.body.place,
       user: req.userId,
+      caption: req.body.text,
     });
     const post = await doc.save();
+
+    // Update user's postsLength
+    await UserModel.findByIdAndUpdate(req.userId, {
+      $inc: { postsLength: 1 },
+    });
     res.json(post);
   } catch (error) {
     console.log(error);
@@ -62,21 +106,60 @@ export const getOne = async (req, res) => {
 
 export const getPopular = async (req, res) => {
   try {
-    const posts = await PostModel.aggregate([
+    const posts = await PostModel.find()
+      .populate("user", "_id username avatar")
+      .exec();
+
+    const aggregatedPosts = await PostModel.aggregate([
+      {
+        $match: {
+          _id: { $in: posts.map((post) => post._id) },
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "user",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      {
+        $unwind: "$user",
+      },
       {
         $project: {
           _id: 1,
           image: 1,
+          caption: 1,
+          place: 1,
+          createdAt: 1,
+          commentsLength: { $size: "$comments" },
+          likes: 1,
           likesLength: {
             $size: "$likes",
           },
+          user: {
+            _id: "$user._id",
+            username: "$user.username",
+            avatar: "$user.avatar",
+          },
         },
       },
-      { $match: { likesLength: { $gt: 2 } } }, // get only posts where likes length greater than 2
-      { $sort: { likesLength: -1 } },
-    ]).exec();
-    console.log("posts", posts);
-    res.json(posts);
+      {
+        $match: {
+          likesLength: { $gt: 2 },
+        },
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+    ]);
+
+    console.log("posts", aggregatedPosts);
+    res.json(aggregatedPosts);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
@@ -84,13 +167,54 @@ export const getPopular = async (req, res) => {
 };
 
 export const getAllCreatedByUser = async (req, res) => {
-  const { userId } = req.params;
-
+  const { username } = req.params;
+  const user = await UserModel.findOne({ username });
   try {
-    const posts = await PostModel.find({ user: userId })
+    const posts = await PostModel.find({ user: user._id })
       .populate("user")
       .exec();
-    res.json(posts);
+
+    const aggregatedPosts = await PostModel.aggregate([
+      {
+        $match: {
+          _id: { $in: posts.map((post) => post._id) },
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "user",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      {
+        $unwind: "$user",
+      },
+      {
+        $project: {
+          _id: 1,
+          image: 1,
+          caption: 1,
+          place: 1,
+          createdAt: 1,
+          commentsLength: { $size: "$comments" },
+          likes: 1,
+          user: {
+            _id: "$user._id",
+            username: "$user.username",
+            avatar: "$user.avatar",
+          },
+        },
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+    ]);
+
+    res.json(aggregatedPosts);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
@@ -123,6 +247,44 @@ export const setPostLiked = async (req, res) => {
       );
       res.json(updatedPost);
     }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+export const getComments = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const post = await PostModel.findById(postId)
+      .select("comments")
+      .populate("comments.user", "_id username avatar")
+      .exec();
+    console.log("post", post);
+
+    res.json(post.comments);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+export const addComment = async (req, res) => {
+  try {
+    const postId = req.body.postId;
+    const updatedPost = await PostModel.findByIdAndUpdate(
+      postId,
+      {
+        $addToSet: {
+          comments: {
+            user: req.userId,
+            comment: req.body.commentText,
+          },
+        },
+      },
+      { new: true }
+    );
+    res.json(updatedPost);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });

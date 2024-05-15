@@ -57,6 +57,7 @@ app.get(
   checkAuth,
   userController.getOneByUsername
 );
+app.get("/users", checkAuth, userController.getUsersByQuery);
 
 app.get("/users/stories", checkAuth, userController.getStories);
 
@@ -93,13 +94,13 @@ app.post("/image/remove/:id", checkAuth, imageController.removeImage);
 // post req
 
 app.post("/posts/create", checkAuth, postController.create);
-
+app.post("/posts/comments", checkAuth, postController.addComment);
 app.get("/posts", checkAuth, postController.getAll);
 app.get("/posts/popular", checkAuth, postController.getPopular);
 app.get("/posts/:id", checkAuth, postController.getOne);
+app.get("/posts/comments/:postId", checkAuth, postController.getComments);
 app.patch("/posts", checkAuth, postController.setPostLiked);
-app.get("/posts/p/:userId", checkAuth, postController.getAllCreatedByUser);
-console.log("hi there");
+app.get("/posts/p/:username", checkAuth, postController.getAllCreatedByUser);
 
 app.listen(port, (err) => {
   console.log("hi there");

@@ -6,7 +6,7 @@ const PostSchema = new mongoose.Schema(
       type: Object,
       required: true,
     },
-    text: {
+    caption: {
       type: String,
     },
     place: {
@@ -14,8 +14,9 @@ const PostSchema = new mongoose.Schema(
     },
     comments: [
       {
-        userId: {
-          type: String,
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
           required: true,
         },
         comment: {

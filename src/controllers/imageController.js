@@ -22,7 +22,7 @@ export const uploadImage = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({
-      message: "Не удалось создать статью",
+      message: "Не удалось загрузить изображение",
     });
   }
 };
